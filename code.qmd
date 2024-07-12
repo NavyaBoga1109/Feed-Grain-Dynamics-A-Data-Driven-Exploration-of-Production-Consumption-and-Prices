@@ -1,0 +1,571 @@
+---
+title: "feed_grains_analysis"
+author: "Group_5"
+format: pdf
+editor: visual
+---
+
+```{r}
+#{r, echo=TRUE, warning=FALSE, message=FALSE}
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+
+# Data Cleaning and Preprocessing Function
+NAVYA_BOGA <- function(file_path) {
+  # Data Extraction
+  data <- read.csv(file_path)
+  
+  # Identify numeric columns
+  numeric_cols <- sapply(data, is.numeric)
+  
+  # Handle missing values
+  data <- na.omit(data)
+  
+  # Handle outliers (using z-score method as an example)
+  z_scores <- scale(data[, numeric_cols])
+  outliers <- which(abs(z_scores) > 3, arr.ind = TRUE)
+  data <- data[-outliers[, 1], ]
+  
+  # Handle formatting issues for the 'date' column
+  if ("date" %in% colnames(data)) {
+    data$date <- as.Date(data$date, format = "%Y-%m-%d")
+  }
+ 
+  return(data)
+}
+
+file_path <- "/Users/ravin/Downloads/FeedGrains.csv"
+
+# Apply data cleaning function
+cleaned_fgdata <- NAVYA_BOGA(file_path)
+View(cleaned_fgdata)
+
+
+```
+
+```{r}
+library(ggplot2)
+# Load data
+data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+
+# 1. Bar Plot of Grain Types
+ggplot(data, aes(x = SC_GroupCommod_Desc)) + 
+    geom_bar() +
+    labs(title = "Distribution of Grain Types")
+
+# 2. Line Plot Showing Trends Over Years
+ggplot(data, aes(x = Year_ID, y = Amount, group = SC_GroupCommod_Desc, color = SC_GroupCommod_Desc)) + 
+    geom_line() +
+    labs(title = "Trends of Grains Over Years")
+
+# 3. Box Plot for Amount Distribution by Grain Type
+ggplot(data, aes(x = SC_GroupCommod_Desc, y = Amount)) + 
+    geom_boxplot() +
+    labs(title = "Amount Distribution by Grain Type")
+
+# 4. Histogram of Yearly Data (for a selected year)
+selected_year <- 1990  # Replace with the year you're interested in
+ggplot(data[data$Year_ID == selected_year,], aes(x = Amount)) + 
+    geom_histogram(bins = 30) + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    labs(title = paste("Amount Distribution in", selected_year))
+
+# 5. Faceted Plot by Grain Category
+ggplot(data, aes(x = Year_ID, y = Amount)) + 
+    geom_line() + 
+    facet_wrap(~ SC_Group_Desc) +
+    labs(title = "Grain Category Comparison Over Years")
+
+# 6. Scatter Plot of Amount vs. Year (for a specific grain type)
+specific_grain_type <- 'Barley'  # Replace with the grain type you're interested in
+ggplot(data[data$SC_GroupCommod_Desc == specific_grain_type,], aes(x = Year_ID, y = Amount)) + 
+    geom_point() +
+    labs(title = paste("Amount vs. Year for", specific_grain_type))
+
+#Scatter Plot of Amount vs. Year
+
+ggplot(data[data$SC_GroupCommod_Desc == 'Barley',], aes(x = Year_ID, y = Amount)) + 
+    geom_point()
+ggplot(data[data$SC_GroupCommod_Desc == 'Oats',], aes(x = Year_ID, y = Amount)) + 
+    geom_point()
+ggplot(data[data$SC_GroupCommod_Desc == 'Corn',], aes(x = Year_ID, y = Amount)) + 
+    geom_point()
+
+
+
+```
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+# Data Cleaning and Preprocessing Function
+NAVYA_BOGA <- function(file_path) {
+  # Data Extraction
+  data <- read.csv(file_path)
+  
+  # Identify numeric columns
+  numeric_cols <- sapply(data, is.numeric)
+  
+  # Handle missing values
+  data <- na.omit(data)
+  
+  # Handle outliers (using z-score method as an example)
+  z_scores <- scale(data[, numeric_cols])
+  outliers <- which(abs(z_scores) > 3, arr.ind = TRUE)
+  data <- data[-outliers[, 1], ]
+  
+  # Handle formatting issues for the 'date' column
+  if ("date" %in% colnames(data)) {
+    data$date <- as.Date(data$date, format = "%Y-%m-%d")
+  }
+ 
+  return(data)
+}
+
+# Specify the file path to your dataset
+file_path <- "/Users/ravin/Downloads/FeedGrains.csv"
+
+# Apply data cleaning function
+cleaned_fgdata <- NAVYA_BOGA(file_path)
+View(cleaned_fgdata)
+
+
+```
+
+```{r}
+library(cluster)
+library(ggplot2)
+data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+data
+
+scaled_data <- scale(data[, c("SC_Commodity_ID","Amount")])
+
+# Determine the optimal number of clusters using elbow method
+wss <- (nrow(scaled_data) - 1) * sum(apply(scaled_data, 2, var))
+for (i in 1:10) wss[i] <- sum(kmeans(scaled_data, centers = i)$withinss)
+
+# Plot the elbow method graph
+plot(1:10, wss, type = "b", xlab = "Number of Clusters", ylab = "Within Sum of Squares")
+
+# Choose the optimal number of clusters based on the plot
+optimal_clusters <- kmeans(scaled_data, centers = 5)$cluster
+
+
+# Add cluster information to the original data
+cleaned_fgdata$Cluster <- optimal_clusters
+
+# Plot the clusters
+ggplot(cleaned_fgdata, aes(x = SC_Commodity_ID , y =Amount , color = factor(Cluster))) +
+  geom_point() +
+  labs(title = "Feed Grain Dynamics Clusters", x = "Production", y = "Consumption") +
+  theme_minimal()
+
+
+library(cluster)
+library(ggplot2)
+data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+data
+
+data_scaled <- scale(data[, sapply(data, is.numeric)])
+
+```
+
+K-means
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(cluster)
+
+# Read the data
+feed_grain_data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+
+# Scaling selected columns
+scaled_data <- scale(feed_grain_data[, c(1,3,5,6,8,10,12,14,15,19)])
+colnames(scaled_data) <- colnames(feed_grain_data)[c(1,3,5,6,8,10,12,14,15,19)]
+
+# Sample 5% of the data
+set.seed(123)  
+sample_size <- max(1, floor(nrow(scaled_data) * 0.05))
+sample_data <- scaled_data[sample(nrow(scaled_data), sample_size), ]
+
+# Convert sample_data to a data frame
+sample_data <- as.data.frame(sample_data)
+
+# Perform k-means clustering using "Year_ID" and "Amount"
+set.seed(123)
+kmeans_result <- kmeans(sample_data[, c("Year_ID", "Amount")], centers = 3, iter.max = 50, nstart = 50)
+
+# Plot the data points with colors representing clusters
+plot(sample_data$Year_ID, sample_data$Amount, col = kmeans_result$cluster, 
+     main = "K-Means Clustering (3 clusters)", 
+     xlab = "Year_ID", ylab = "Amount")
+
+# Calculate silhouette score
+silhouette_score <- silhouette(kmeans_result$cluster, dist(sample_data[, c("Year_ID", "Amount")]))
+
+# Print silhouette score
+cat("Silhouette Score:", mean(silhouette_score[, "sil_width"]), "\n")
+```
+
+Hieachy based
+
+```{r}
+library(cluster)
+library(ggplot2)
+data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+data
+sample_data <- data[sample(nrow(data), nrow(data) * 0.00005), ]
+sample_data
+data_scaled <- scale(sample_data[, sapply(sample_data, is.numeric)])
+data_scaled
+dist_matrix <- dist(data_scaled, method = "euclidean")
+cluster_results <- hclust(dist_matrix)
+plot(cluster_results)
+
+# Calculate the cophenetic correlation coefficient
+coph_corr <- cophenetic(cluster_results)
+
+# Print the cophenetic correlation coefficient
+print(paste("Cophenetic Correlation Coefficient:", cor(coph_corr, dist_matrix)))
+
+# Measure the silhouette score (optional)
+silhouette_score <- silhouette(cut_tree, dist_matrix)
+print(paste("Silhouette Score:", mean(silhouette_score[, "sil_width"])))
+
+
+# Cut the dendrogram into k clusters (you need to determine the appropriate k)
+k <- 3  # Adjust as needed
+cut_tree <- cutree(cluster_results, k)
+
+# Calculate the cophenetic correlation coefficient
+coph_corr <- cophenetic(cluster_results)
+
+# Print the cophenetic correlation coefficient
+print(paste("Cophenetic Correlation Coefficient:", cor(coph_corr, dist_matrix)))
+
+# Measure the silhouette score (optional)
+silhouette_score <- silhouette(cut_tree, dist_matrix)
+print(paste("Silhouette Score:", mean(silhouette_score[, "sil_width"])))
+
+```
+
+Density Based
+
+```{r}
+install.packages("factoextra")
+install.packages("DEoptimR")
+install.packages("fpc")
+install.packages("dbscan")
+install.packages("cluster") 
+
+# Load libraries
+library(dbscan)
+library(fpc)
+library(factoextra)
+library(cluster)
+data <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+data
+sample_data <- data[sample(nrow(data), nrow(data) * 0.000005), ]
+sample_data
+df <- sample_data[,1:10]
+plot(df)
+data_scaled <- scale(df[, sapply(df, is.numeric)])
+data_scaled
+db <- dbscan(data_scaled, eps = 0.15, MinPts = 5)
+plot(df, main = "DBSCAN", col= db$cluster)
+#DBSCAN
+
+library(dbscan)
+
+# Generate some random data for demonstration
+
+data_scaled <- scale(data[, sapply(data, is.numeric)])
+sample_data <- data_scaled[sample(nrow(data), nrow(data) * 0.005), ]
+sample_data
+# Perform DBSCAN clustering
+dbscan_result <- dbscan(sample_data, eps = 10.5 , MinPts = 19)
+# Plot the DBSCAN clustering result
+plot(sample_data, col = dbscan_result$cluster + 1, pch = 19, main = "DBSCAN Clustering", xlab="Production", ylab="Consumption")
+points(data[dbscan_result$cluster == 0, ], col = "orange", pch = 19)
+print(dbscan_result$cluster)
+
+library(factoextra)
+
+dbscan_result <- dbscan(sample_data, eps = 10.5, MinPts = 19)
+
+cluster_labels <- dbscan_result$cluster
+
+# Calculate silhouette score
+silhouette_scores <- silhouette(cluster_labels, dist(sample_data))
+
+# Check the structure of the silhouette_scores
+print(str(silhouette_scores))
+
+# If silhouette_scores is a matrix, access the silhouette width correctly
+if (is.matrix(silhouette_scores) && "sil_width" %in% colnames(silhouette_scores)) {
+    avg_silhouette_score <- mean(silhouette_scores[, "sil_width"])
+    cat("Average Silhouette Score:", avg_silhouette_score, "\n")
+} else {
+    cat("Silhouette scores are not in the expected format.\n")
+}
+
+```
+
+```{r}
+if (!requireNamespace("treemap", quietly = TRUE)) {
+  install.packages("treemap")
+}
+library(treemap)
+library(tidyr)
+library(dplyr)
+
+# Assuming these are the identifier columns to exclude
+exclude_columns <- c("SC_Commodity_ID", "SC_Unit_ID", "Year_ID", "SC_Frequency_ID", "Timeperiod_ID", "Amount")
+
+# Load the dataset
+feed_grain_totals <- read.csv("C:/Users/ravin/Downloads/cleaned_fgdata.csv")
+
+treemap_data <- feed_grain_totals %>%
+  select(-one_of(exclude_columns)) %>%
+  gather(Variable, Percentage, -SC_Commodity_Desc, -SC_Group_ID, -SC_Group_Desc, -SC_Geography_ID)  # Add other identifier columns as needed
+
+# Convert Percentage column to numeric
+treemap_data <- treemap_data %>%
+  mutate(Percentage = as.numeric(Percentage))
+
+# Create Treemap
+treemap_plot <- treemap(
+  treemap_data,
+  index = c("SC_Commodity_Desc", "Variable"),
+  vSize = "Percentage",
+  vColor = "Variable",
+  draw = TRUE
+)
+
+# Plot the Treemap
+print(treemap_plot)
+
+
+```
+
+```{r}
+install.packages("networkD3")
+library(networkD3)
+library(dplyr)
+
+cleaned_fgdata <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+sankey_data <- cleaned_fgdata %>%
+  group_by(source = SC_Group_Desc, target = SC_Commodity_Desc) %>%
+  summarize(value = n()) %>%
+  filter(value > 0)  # Adjust as needed
+
+# Create unique nodes from both source and target columns
+nodes <- data.frame(name = unique(c(sankey_data$source, sankey_data$target)))
+
+# Add group column to nodes
+nodes$group <- rep(1, nrow(nodes))  
+
+# Add group information to sankey_data
+sankey_data <- sankey_data %>%
+  left_join(nodes, by = c("source" = "name")) %>%
+  rename(source_group = group) %>%
+  left_join(nodes, by = c("target" = "name")) %>%
+  rename(target_group = group)
+
+# Create the Sankey diagram using networkD3
+sankey_plot <- sankeyNetwork(Links = sankey_data, Nodes = nodes, Source = "source_group", Target = "target_group", Value = "value", units = "TWh", fontSize = 12, nodeWidth = 30)
+
+# Display the Sankey diagram
+print(sankey_plot)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+library(dplyr)
+sankey_nodes <- unique(c(cleaned_fgdata$SC_Group_Desc, cleaned_fgdata$SC_Commodity_Desc))
+sankey_nodes_df <- data.frame(id = 1:length(sankey_nodes), name = sankey_nodes)
+
+# Create links for Sankey diagram
+sankey_links <- cleaned_fgdata %>%
+  select(from = SC_Group_Desc, to = SC_Commodity_Desc) %>%
+  filter(!is.na(from) & !is.na(to)) %>%
+  mutate(from_id = match(from, sankey_nodes_df$name),
+         to_id = match(to, sankey_nodes_df$name))
+
+# Save to CSV
+write.csv(sankey_nodes_df, "sankey_nodes.csv", row.names = FALSE)
+write.csv(sankey_links, "sankey_links.csv", row.names = FALSE)
+force_nodes <- unique(c(cleaned_fgdata$SC_Group_Desc, cleaned_fgdata$SC_Commodity_Desc))
+force_nodes_df <- data.frame(id = 1:length(force_nodes), name = force_nodes)
+
+# Create links for Force-Directed graph
+force_links <- cleaned_fgdata %>%
+  select(from = SC_Group_Desc, to = SC_Commodity_Desc) %>%
+  filter(!is.na(from) & !is.na(to)) %>%
+  mutate(from_id = match(from, force_nodes_df$name),
+         to_id = match(to, force_nodes_df$name))
+
+# Save to CSV
+write.csv(force_nodes_df, "force_nodes.csv", row.names = FALSE)
+write.csv(force_links, "force_links.csv", row.names = FALSE)
+install.packages("networkD3")
+
+# Load required libraries
+library(networkD3)
+
+# Load data
+sankey_nodes_df <- read.csv("sankey_nodes.csv")
+print(sankey_nodes_df)
+sankey_links <- read.csv("sankey_links.csv")
+print(sankey_links)
+
+sankey <- sankeyNetwork(
+  Links = sankey_links, 
+  Nodes = sankey_nodes_df,
+  Source = "from_id", 
+  Target = "to_id",
+  Value = 1, 
+  units = "TWh", 
+  fontSize = 12, 
+  nodeWidth = 50  # Adjust this value as needed
+)
+
+print(sankey)
+# Save Sankey plot as HTML image
+saveNetwork(sankey, file = "sankey_plot.html")
+
+# Save Sankey plot as HTML image in the Downloads folder
+html_file_path <- file.path(Sys.getenv("USERPROFILE"), "Downloads", "sankey_plot.html")
+saveNetwork(sankey, file = html_file_path)
+
+# Print the path to the console
+cat("Sankey plot saved to:", html_file_path, "\n")
+
+
+```
+
+```{r}
+if (!requireNamespace("igraph", quietly = TRUE)) {
+  install.packages("igraph")
+}
+if (!requireNamespace("visNetwork", quietly = TRUE)) {
+  install.packages("visNetwork")
+}
+library(igraph)
+library(visNetwork)
+library(dplyr)
+
+# Sample data 
+force_data <- cleaned_fgdata %>%
+  select(from = SC_Group_Desc, to = SC_Commodity_Desc) %>%
+  filter(!is.na(from) & !is.na(to))
+
+# Create a graph object using igraph
+graph <- graph_from_data_frame(force_data, directed = TRUE)
+
+# Create layout for the graph
+layout <- layout_with_fr(graph)
+
+# Plot the graph using visNetwork
+visNetwork(
+  nodes = data.frame(id = V(graph)$name),
+  edges = as.data.frame(get.edgelist(graph)),
+  layout = layout
+)
+
+```
+
+```{r}
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+
+if (!requireNamespace("gganimate", quietly = TRUE)) {
+  install.packages("gganimate")
+}
+
+if (!requireNamespace("gifski", quietly = TRUE)) {
+  install.packages("gifski")
+}
+
+library(ggplot2)
+library(gganimate)
+# Load the dataset
+cleaned_fgdata <- read.csv("C:/Users/ravin/Downloads/cleaned_fgdata.csv")
+
+cleaned_fgdata$Year_ID <- as.factor(cleaned_fgdata$Year_ID)
+
+# Create an animated plot
+animated_plot <- ggplot(cleaned_fgdata, aes(x = SC_Commodity_Desc, y = Amount, fill = SC_Commodity_Desc)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Feed Grain Production and Consumption Over Time", x = "Commodity", y = "Amount") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels
+  transition_states(Year_ID, transition_length = 2, state_length = 1) +
+  ease_aes('linear')
+
+# Save the animation as a GIF
+anim_save("feed_grain_animation.gif", animation = animated_plot, renderer = gifski_renderer())
+
+# Print message indicating completion
+cat("Animation saved as 'feed_grain_animation.gif'\n")
+
+
+
+
+
+
+```
+
+Random Forest
+
+```{r}
+library(randomForest)
+
+# Load the dataset (change the path accordingly)
+feedGrain <- read.csv("/Users/ravin/Downloads/cleaned_fgdata.csv")
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+sample_index <- sample(1:nrow(feedGrain), 0.7 * nrow(feedGrain))
+train_data <- feedGrain[sample_index, ]
+test_data <- feedGrain[-sample_index, ]
+
+# Define the target variable and predictor variables
+target_variable <- "Amount"
+predictor_variables <- c("SC_Group_ID", "SC_Group_Desc", "SC_GroupCommod_ID", "SC_GroupCommod_Desc", 
+                         "SC_Geography_ID", "SortOrder", "SC_GeographyIndented_Desc", "SC_Commodity_ID", 
+                         "SC_Commodity_Desc", "SC_Attribute_ID", "SC_Attribute_Desc", "SC_Unit_ID", 
+                         "SC_Unit_Desc", "Year_ID", "SC_Frequency_ID", "SC_Frequency_Desc", 
+                         "Timeperiod_ID", "Timeperiod_Desc")
+
+# Train the random forest regression model
+rf_model <- randomForest(
+  formula = as.formula(paste(target_variable, "~", paste(predictor_variables, collapse = "+"))),
+  data = train_data,
+  ntree = 50,  # Number of trees in the forest
+  mtry = sqrt(length(predictor_variables))/2,  # Number of variables randomly sampled as candidates at each split
+  importance = TRUE  # Calculate variable importance
+)
+
+# Make predictions on the test data
+predictions <- predict(rf_model, newdata = test_data)
+
+# Evaluate the model (you can use different metrics as needed)
+# For example, you can use Mean Absolute Error (MAE) or Root Mean Squared Error (RMSE)
+actual_values <- test_data$Amount
+mae <- mean(abs(predictions - actual_values))
+rmse <- sqrt(mean((predictions - actual_values)^2))
+
+# Print model evaluation metrics
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("Root Mean Squared Error (RMSE):", rmse, "\n")
+
+# Optionally, you can also visualize variable importance
+varImpPlot(rf_model)
+
+
+```
