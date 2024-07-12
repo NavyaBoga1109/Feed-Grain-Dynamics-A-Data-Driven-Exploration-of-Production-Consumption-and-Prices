@@ -74,7 +74,3 @@ The conclusion summarizes the key findings and insights from the project. It hig
 - Overview of the tools and techniques used, particularly the use of R programming for its data analysis capabilities.
 - Assessment of model performance and suggestions for further improvements.
 
-## Authors
-- Navya Boga
-
-This detailed description provides a comprehensive overview of your project and guides users on how to navigate and utilize the repository effectively.
